@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conference Tracker</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f8f7f4; --surface:#ffffff; --surface2:#f2f0ec;
+  --border:rgba(0,0,0,0.1); --border-md:rgba(0,0,0,0.18);
+  --text:#1a1a18; --text2:#5a5a55; --text3:#9a9990;
+  --info:#185FA5; --info-bg:#E6F1FB;
+  --success:#0F6E56; --success-bg:#E1F5EE;
+  --warn:#854F0B; --warn-bg:#FAEEDA;
+  --danger:#A32D2D; --danger-bg:#FCEBEB;
+  --radius:8px; --radius-lg:12px;
+}
+@media (prefers-color-scheme:dark) {
+  :root {
+    --bg:#1a1a18; --surface:#242422; --surface2:#2e2e2b;
+    --border:rgba(255,255,255,0.1); --border-md:rgba(255,255,255,0.18);
+    --text:#e8e6e0; --text2:#a0a09a; --text3:#606058;
+    --info:#85B7EB; --info-bg:#0c2640;
+    --success:#5DCAA5; --success-bg:#04342C;
+    --warn:#EF9F27; --warn-bg:#412402;
+    --danger:#F09595; --danger-bg:#501313;
+  }
+}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; min-height:100vh; }
+.app { display:flex; height:100vh; overflow:hidden; }
+
+/* ALERT BANNER */
+.alert-banner { background:var(--danger-bg); border-bottom:0.5px solid var(--danger); padding:8px 18px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.alert-banner-text { font-size:12px; color:var(--danger); flex:1; }
+.alert-banner-close { background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px; line-height:1; padding:0 4px; }
+
+/* SIDEBAR */
+.sidebar { width:220px; min-width:220px; background:var(--surface2); border-right:0.5px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; }
+.sidebar-logo { padding:18px 16px 10px; font-size:13px; font-weight:600; color:var(--text); }
+.sidebar-logo span { color:var(--text3); font-weight:400; font-size:11px; display:block; margin-top:1px; }
+.nav-section { padding:12px 16px 4px; font-size:10px; font-weight:600; color:var(--text3); letter-spacing:.07em; text-transform:uppercase; }
+.nav-item { display:flex; align-items:center; gap:8px; padding:8px 16px; cursor:pointer; font-size:13px; color:var(--text2); border-left:2px solid transparent; transition:all .12s; user-select:none; }
+.nav-item:hover { background:var(--surface); color:var(--text); }
+.nav-item.active { background:var(--surface); color:var(--text); border-left-color:var(--info); font-weight:500; }
+.nav-badge { margin-left:auto; font-size:11px; padding:1px 6px; border-radius:10px; }
+.nb-red { background:var(--danger-bg); color:var(--danger); }
+.nb-blue { background:var(--info-bg); color:var(--info); }
+.nb-warn { background:var(--warn-bg); color:var(--warn); }
+.profile-card { margin:8px 12px; padding:10px 12px; background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); }
+.profile-title { font-size:11px; font-weight:600; color:var(--text2); margin-bottom:5px; }
+.profile-tags { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; }
+.ptag { display:flex; align-items:center; gap:3px; padding:2px 7px; border-radius:10px; font-size:11px; background:var(--info-bg); color:var(--info); }
+.ptag .remove { cursor:pointer; opacity:.6; font-size:12px; line-height:1; }
+.ptag .remove:hover { opacity:1; }
+.add-tag-row { display:flex; gap:5px; }
+.add-tag-input { flex:1; padding:4px 7px; border:0.5px solid var(--border-md); border-radius:var(--radius); background:var(--bg); color:var(--text); font-size:11px; outline:none; font-family:inherit; }
+.add-tag-input:focus { border-color:var(--info); }
+.add-tag-btn { padding:4px 8px; border:0.5px solid var(--border-md); border-radius:var(--radius); background:transparent; color:var(--text2); font-size:11px; cursor:pointer; transition:background .12s; font-family:inherit; }
+.add-tag-btn:hover { background:var(--info-bg); color:var(--info); }
+.scope-card { margin:8px 12px 8px; padding:10px 12px; background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); }
+.scope-title { font-size:11px; font-weight:600; color:var(--text2); margin-bottom:6px; }
+.scope-btns { display:flex; gap:4px; }
+.scope-btn { flex:1; padding:5px 4px; border:0.5px solid var(--border-md); border-radius:var(--radius); background:transparent; color:var(--text2); font-size:11px; cursor:pointer; text-align:center; transition:all .12s; font-family:inherit; }
+.scope-btn:hover { background:var(--surface2); }
+.scope-btn.active { background:var(--info-bg); color:var(--info); border-color:transparent; font-weight:500; }
+.discover-btn { margin:0 12px 6px; padding:8px; background:var(--info-bg); color:var(--info); border:0.5px solid transparent; border-radius:var(--radius); font-size:12px; font-weight:500; cursor:pointer; text-align:center; transition:opacity .12s; font-family:inherit; }
+.discover-btn:hover { opacity:.8; }
+.sidebar-action-btn { margin:0 12px 6px; padding:7px; background:transparent; color:var(--text2); border:0.5px solid var(--border-md); border-radius:var(--radius); font-size:12px; cursor:pointer; text-align:center; transition:all .12s; font-family:inherit; }
+.sidebar-action-btn:hover { background:var(--surface); }
+
+/* MAIN */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+.topbar { padding:12px 18px; background:var(--surface); border-bottom:0.5px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.topbar-title { font-size:16px; font-weight:600; flex:1; }
+.btn { padding:6px 12px; border:0.5px solid var(--border-md); border-radius:var(--radius); background:transparent; color:var(--text); font-size:12px; cursor:pointer; transition:background .12s; font-family:inherit; white-space:nowrap; }
+.btn:hover { background:var(--surface2); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.scan-bar-wrap { height:2px; overflow:hidden; flex-shrink:0; }
+.scan-bar { height:2px; background:var(--info); animation:scanning 1.8s ease-in-out infinite; }
+@keyframes scanning { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
+.search-wrap { padding:10px 18px; background:var(--surface); border-bottom:0.5px solid var(--border); flex-shrink:0; }
+.search-input { width:100%; padding:8px 12px; border:0.5px solid var(--border-md); border-radius:var(--radius); background:var(--surface2); color:var(--text); font-size:13px; outline:none; font-family:inherit; }
+.search-input:focus { border-color:var(--info); background:var(--surface); }
+.filter-bar { padding:8px 18px; background:var(--surface); border-bottom:0.5px solid var(--border); display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex-shrink:0; }
+.filter-label { font-size:10px; font-weight:600; color:var(--text3); letter-spacing:.06em; text-transform:uppercase; }
+.chip { padding:3px 10px; border-radius:20px; border:0.5px solid var(--border); font-size:11px; cursor:pointer; background:transparent; color:var(--text2); transition:all .12s; white-space:nowrap; }
+.chip:hover { background:var(--surface2); }
+.chip.on { background:var(--info-bg); color:var(--info); border-color:transparent; font-weight:500; }
+.list-area { flex:1; overflow-y:auto; }
+
+/* CONF CARDS */
+.conf-card { padding:13px 18px; border-bottom:0.5px solid var(--border); cursor:pointer; transition:background .1s; background:var(--surface); }
+.conf-card:hover { background:var(--surface2); }
+.conf-card.sel { background:var(--surface2); border-left:3px solid var(--info); padding-left:15px; }
+.unread-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--info); margin-right:6px; vertical-align:middle; flex-shrink:0; }
+.cname { font-size:13px; font-weight:600; margin-bottom:3px; line-height:1.35; display:flex; align-items:baseline; }
+.cmeta { font-size:11px; color:var(--text2); display:flex; gap:10px; flex-wrap:wrap; margin-bottom:5px; }
+.ctags { display:flex; gap:4px; flex-wrap:wrap; }
+.tag { padding:2px 6px; border-radius:6px; font-size:10px; font-weight:600; }
+.tag-screen{background:#EEEDFE;color:#3C3489} .tag-proteomics{background:#E1F5EE;color:#085041}
+.tag-imaging{background:#FAEEDA;color:#633806} .tag-ml{background:#E6F1FB;color:#0C447C}
+.tag-singlecell{background:#FBEAF0;color:#72243E} .tag-tox{background:#FAECE7;color:#712B13}
+.tag-drug{background:#EAF3DE;color:#27500A} .tag-omics{background:#FCEBEB;color:#A32D2D}
+.tag-custom{background:#F1EFE8;color:#444441}
+.cfoot { display:flex; align-items:center; justify-content:space-between; margin-top:5px; }
+.dpill { padding:2px 7px; border-radius:6px; font-size:10px; font-weight:600; }
+.dp-urgent{background:#FCEBEB;color:#A32D2D} .dp-soon{background:#FAEEDA;color:#633806}
+.dp-ok{background:#EAF3DE;color:#27500A} .dp-closed{background:var(--surface2);color:var(--text3)}
+.sbadge { padding:2px 7px; border-radius:6px; font-size:10px; font-weight:600; }
+.sb-new{background:var(--info-bg);color:var(--info)} .sb-int{background:var(--success-bg);color:var(--success)}
+.sb-track{background:var(--warn-bg);color:var(--warn)} .sb-pass{background:var(--surface2);color:var(--text3)}
+.rel-row { display:flex; align-items:center; gap:5px; margin-top:4px; }
+.rel-dot { width:6px; height:6px; border-radius:50%; }
+.rel-high{background:#1D9E75} .rel-med{background:#BA7517} .rel-low{background:var(--text3)}
+
+/* DETAIL */
+.detail { width:360px; min-width:360px; background:var(--surface); border-left:0.5px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; }
+.detail-empty { display:flex; align-items:center; justify-content:center; height:100%; color:var(--text3); font-size:13px; flex-direction:column; gap:8px; }
+.dh { padding:16px 18px; border-bottom:0.5px solid var(--border); }
+.dh-name { font-size:15px; font-weight:600; margin-bottom:5px; line-height:1.35; }
+.ds { padding:12px 18px; border-bottom:0.5px solid var(--border); }
+.ds-label { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; }
+.dr { display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; gap:10px; }
+.dr span:first-child { color:var(--text2); white-space:nowrap; }
+.dr span:last-child { text-align:right; }
+.conf-link { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--info); text-decoration:none; padding:5px 10px; border:0.5px solid var(--border); border-radius:var(--radius); transition:background .12s; margin-top:4px; }
+.conf-link:hover { background:var(--info-bg); }
+.int-row { display:flex; gap:6px; padding:12px 18px; border-bottom:0.5px solid var(--border); }
+.ib { flex:1; padding:7px 4px; border-radius:var(--radius); border:0.5px solid var(--border-md); font-size:12px; cursor:pointer; background:transparent; color:var(--text2); text-align:center; transition:all .12s; font-family:inherit; }
+.ib:hover { background:var(--surface2); }
+.ib.yes{background:var(--success-bg);color:var(--success);border-color:transparent;font-weight:600}
+.ib.maybe{background:var(--warn-bg);color:var(--warn);border-color:transparent;font-weight:600}
+.ib.no{background:var(--surface2);color:var(--text3);border-color:transparent}
+.prog-bar { height:4px; background:var(--border); border-radius:2px; margin-bottom:10px; overflow:hidden; }
+.prog-fill { height:100%; background:var(--info); border-radius:2px; transition:width .3s; }
+.stage-row { display:flex; gap:5px; flex-wrap:wrap; }
+.stg { padding:5px 10px; border-radius:10px; border:0.5px solid var(--border-md); font-size:11px; cursor:pointer; background:transparent; color:var(--text2); transition:all .12s; font-family:inherit; }
+.stg:hover { background:var(--surface2); }
+.stg.done{background:var(--success-bg);color:var(--success);border-color:transparent}
+.stg.cur{background:var(--info-bg);color:var(--info);border-color:transparent;font-weight:600}
+.notes-area { width:100%; padding:8px 10px; border:0.5px solid var(--border-md); border-radius:var(--radius); background:var(--surface2); color:var(--text); font-size:12px; font-family:inherit; resize:vertical; min-height:70px; outline:none; line-height:1.5; }
+.notes-area:focus { border-color:var(--info); background:var(--surface); }
+.empty-state { padding:50px 18px; text-align:center; color:var(--text3); font-size:13px; }
+
+/* MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:100; }
+.modal { background:var(--surface); border-radius:var(--radius-lg); border:0.5px solid var(--border); width:680px; max-width:96vw; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+.modal-sm { width:440px; }
+.modal-header { padding:15px 20px; border-bottom:0.5px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.modal-title { font-size:14px; font-weight:600; }
+.modal-close { cursor:pointer; font-size:18px; color:var(--text3); background:none; border:none; padding:2px 6px; }
+.modal-close:hover { color:var(--text); }
+.modal-config { padding:14px 20px; border-bottom:0.5px solid var(--border); flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
+.modal-body { padding:14px 20px; overflow-y:auto; flex:1; }
+.modal-footer { padding:12px 20px; border-top:0.5px solid var(--border); display:flex; gap:8px; justify-content:space-between; align-items:center; flex-shrink:0; }
+.modal-label { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
+.modal-input { width:100%; padding:7px 10px; border:0.5px solid var(--border-md); border-radius:var(--radius); background:var(--surface2); color:var(--text); font-size:13px; font-family:inherit; outline:none; }
+.modal-input:focus { border-color:var(--info); background:var(--surface); }
+.spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--info); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.scope-row { display:flex; gap:6px; }
+.scope-opt { flex:1; padding:6px 4px; border:0.5px solid var(--border-md); border-radius:var(--radius); font-size:12px; cursor:pointer; text-align:center; background:transparent; color:var(--text2); font-family:inherit; transition:all .12s; }
+.scope-opt:hover { background:var(--surface2); }
+.scope-opt.sel { background:var(--info-bg); color:var(--info); border-color:transparent; font-weight:500; }
+
+/* RESULT CARDS */
+.result-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.result-count { font-size:12px; color:var(--text2); }
+.import-all-btn { padding:6px 14px; background:var(--success-bg); color:var(--success); border:0.5px solid transparent; border-radius:var(--radius); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+.import-all-btn:hover { opacity:.8; }
+.result-card { background:var(--surface2); border:0.5px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:10px; transition:opacity .2s; }
+.result-card.imported { opacity:.45; pointer-events:none; }
+.result-card.duplicate { border-color:var(--warn); }
+.rc-name { font-size:13px; font-weight:600; margin-bottom:4px; line-height:1.35; }
+.rc-meta { font-size:11px; color:var(--text2); display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+.rc-notes { font-size:11px; color:var(--text2); line-height:1.5; margin-bottom:8px; }
+.rc-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.rc-tags { display:flex; gap:4px; flex-wrap:wrap; flex:1; }
+.rc-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+.add-inbox-btn { padding:5px 12px; background:var(--info-bg); color:var(--info); border:0.5px solid transparent; border-radius:var(--radius); font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.add-inbox-btn:hover { opacity:.8; }
+.dup-badge { padding:2px 7px; background:var(--warn-bg); color:var(--warn); border-radius:6px; font-size:10px; font-weight:600; }
+.added-label { font-size:11px; color:var(--success); font-weight:600; }
+.search-status { font-size:13px; color:var(--text2); padding:20px 0; text-align:center; }
+
+/* ADD FORM */
+.add-form { padding:14px 18px; border-bottom:0.5px solid var(--border); background:var(--info-bg); flex-shrink:0; }
+.add-form-title { font-size:12px; font-weight:600; color:var(--info); margin-bottom:10px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+.form-input { padding:6px 9px; border:0.5px solid var(--border-md); border-radius:var(--radius); background:var(--surface); color:var(--text); font-size:12px; font-family:inherit; outline:none; width:100%; }
+.form-input:focus { border-color:var(--info); }
+
+/* SETTINGS */
+.settings-row { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.settings-row label { font-size:11px; font-weight:600; color:var(--text2); }
+.key-input-wrap { position:relative; }
+.key-input { padding-right:70px; font-family:monospace; font-size:12px; letter-spacing:.03em; }
+.key-toggle { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; font-size:11px; color:var(--info); cursor:pointer; }
+
+::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--border-md);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">Conference Tracker<span>📍 Sydney, Australia</span></div>
+    <div class="nav-section">Views</div>
+    <div class="nav-item active" onclick="sw('inbox')" id="nav-inbox">📥 Inbox <span class="nav-badge nb-red" id="b-inbox">0</span></div>
+    <div class="nav-item" onclick="sw('urgent')" id="nav-urgent">⚠️ Due soon <span class="nav-badge nb-warn" id="b-urgent">0</span></div>
+    <div class="nav-item" onclick="sw('interested')" id="nav-interested">⭐ Interested <span class="nav-badge nb-blue" id="b-int">0</span></div>
+    <div class="nav-item" onclick="sw('tracking')" id="nav-tracking">📋 Submitting <span class="nav-badge nb-blue" id="b-track">0</span></div>
+    <div class="nav-item" onclick="sw('all')" id="nav-all">🗂 All</div>
+    <div class="nav-item" onclick="sw('passed')" id="nav-passed">✕ Passed</div>
+
+    <div class="nav-section" style="margin-top:8px">Research areas</div>
+    <div class="profile-card">
+      <div class="profile-title">Tags used for discovery</div>
+      <div class="profile-tags" id="research-tags"></div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="new-tag-input" placeholder="Add topic…" onkeydown="if(event.key==='Enter')addTag()">
+        <button class="add-tag-btn" onclick="addTag()">+ Add</button>
+      </div>
+    </div>
+
+    <div class="nav-section" style="margin-top:4px">Search scope</div>
+    <div class="scope-card">
+      <div class="scope-title">Where to search</div>
+      <div class="scope-btns">
+        <button class="scope-btn" onclick="setScope('local')" id="scope-local">📍 Local</button>
+        <button class="scope-btn" onclick="setScope('domestic')" id="scope-domestic">🇦🇺 AU</button>
+        <button class="scope-btn active" onclick="setScope('international')" id="scope-international">🌐 Global</button>
+      </div>
+    </div>
+
+    <button class="discover-btn" onclick="openDiscoverModal()">🔍 Discover conferences</button>
+    <button class="sidebar-action-btn" onclick="openExportModal()">⬇ Export (CSV / Calendar)</button>
+    <button class="sidebar-action-btn" onclick="openSettingsModal()">⚙ Settings / API key</button>
+
+    <div style="flex:1"></div>
+    <div style="padding:10px 12px 14px">
+      <button class="btn" style="width:100%;font-size:12px" onclick="toggleAddForm()">+ Add conference manually</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div id="alert-banner" style="display:none">
+      <div class="alert-banner">
+        <span class="alert-banner-text" id="alert-text"></span>
+        <button class="alert-banner-close" onclick="dismissAlert()">✕</button>
+      </div>
+    </div>
+
+    <div class="topbar">
+      <div class="topbar-title" id="view-title">Inbox</div>
+      <button class="btn" id="export-btn" onclick="openExportModal()">⬇ Export</button>
+    </div>
+    <div class="scan-bar-wrap" id="scan-wrap" style="display:none"><div class="scan-bar"></div></div>
+
+    <div id="add-form-wrap" style="display:none">
+      <div class="add-form">
+        <div class="add-form-title">Add conference manually</div>
+        <div class="form-grid">
+          <input class="form-input" id="f-name" placeholder="Conference name *">
+          <input class="form-input" id="f-loc" placeholder="Location">
+          <input class="form-input" id="f-dates" placeholder="Dates (e.g. Jun 10–14, 2025)">
+          <input class="form-input" id="f-ddl" placeholder="Deadline (e.g. Feb 1, 2025)">
+          <input class="form-input" id="f-price" placeholder="Price (e.g. $850)">
+          <input class="form-input" id="f-url" placeholder="Website URL">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input class="form-input" id="f-tags" placeholder="Tags (comma-separated)" style="flex:1">
+          <input class="form-input" id="f-notes" placeholder="Notes" style="flex:1">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" style="background:var(--info-bg);color:var(--info);border-color:transparent;font-size:12px" onclick="addConfManual()">Add Conference</button>
+          <button class="btn" style="font-size:12px" onclick="toggleAddForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <input class="search-input" id="search" placeholder="Search conferences by name, location, or topic…" oninput="render()">
+    </div>
+    <div class="filter-bar" id="filter-bar"></div>
+    <div class="list-area" id="list"></div>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="detail" id="detail">
+    <div class="detail-empty"><span style="font-size:32px">🗂</span>Select a conference to view details</div>
+  </div>
+</div>
+
+<!-- DISCOVER MODAL -->
+<div class="modal-overlay" id="modal-discover" style="display:none" onclick="if(event.target===this)closeModal('modal-discover')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔍 Discover conferences</div>
+      <button class="modal-close" onclick="closeModal('modal-discover')">✕</button>
+    </div>
+    <div class="modal-config">
+      <div>
+        <div class="modal-label">Search scope</div>
+        <div class="scope-row" id="modal-scope-row"></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1">
+          <div class="modal-label">Additional search terms (optional)</div>
+          <input class="modal-input" id="extra-terms" placeholder="e.g. workshops, industry events…">
+        </div>
+        <div style="width:130px">
+          <div class="modal-label">Time period</div>
+          <input class="modal-input" id="time-period" value="2025–2026">
+        </div>
+      </div>
+      <div>
+        <div class="modal-label">Searching with these research areas</div>
+        <div id="modal-tags-preview" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+      </div>
+    </div>
+    <div class="modal-body" id="modal-discover-body">
+      <div class="search-status" id="search-status">Configure your search above, then click <strong>Search</strong>.</div>
+      <div id="results-area" style="display:none">
+        <div class="result-header">
+          <div class="result-count" id="result-count"></div>
+          <button class="import-all-btn" id="import-all-btn" onclick="importAll()">⬇ Add all new to Inbox</button>
+        </div>
+        <div id="result-cards"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div style="font-size:11px;color:var(--text3)" id="import-tally"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="closeModal('modal-discover')">Close</button>
+        <button class="btn" style="background:var(--info-bg);color:var(--info);border-color:transparent;font-weight:500" onclick="runDiscover()" id="search-btn">Search with AI ↗</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="modal-export" style="display:none" onclick="if(event.target===this)closeModal('modal-export')">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">⬇ Export</div>
+      <button class="modal-close" onclick="closeModal('modal-export')">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;padding:20px">
+      <div class="modal-label">What to export</div>
+      <div style="display:flex;flex-direction:column;gap:8px" id="export-scope-opts">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="exp-scope" value="all" checked> All conferences</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="exp-scope" value="interested"> Interested only</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="exp-scope" value="tracking"> Submitting only</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="exp-scope" value="deadlines"> Upcoming deadlines (next 90 days)</label>
+      </div>
+      <div style="height:0.5px;background:var(--border);margin:4px 0"></div>
+      <div class="modal-label">Format</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1;font-size:13px;padding:10px" onclick="doExport('csv')">📄 CSV spreadsheet</button>
+        <button class="btn" style="flex:1;font-size:13px;padding:10px" onclick="doExport('ics')">📅 Calendar (.ics)<br><span style="font-size:10px;color:var(--text3)">Deadlines as events</span></button>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">CSV opens in Excel / Google Sheets. ICS imports into Google Calendar, Outlook, or Apple Calendar.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="modal-settings" style="display:none" onclick="if(event.target===this)closeModal('modal-settings')">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">⚙ Settings</div>
+      <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px;display:flex;flex-direction:column;gap:16px">
+      <div class="settings-row">
+        <label>Anthropic API key</label>
+        <div class="key-input-wrap">
+          <input class="modal-input key-input" id="api-key-input" type="password" placeholder="sk-ant-…" autocomplete="off">
+          <button class="key-toggle" onclick="toggleKeyVis()">Show</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3)">Saved locally in your browser. Never sent anywhere except Anthropic's API.</div>
+      </div>
+      <div class="settings-row">
+        <label>Deadline alert window</label>
+        <select class="modal-input" id="alert-days-input" style="cursor:pointer">
+          <option value="14">14 days before</option>
+          <option value="21" selected>21 days before</option>
+          <option value="30">30 days before</option>
+          <option value="45">45 days before</option>
+        </select>
+      </div>
+      <div style="height:0.5px;background:var(--border)"></div>
+      <div class="settings-row">
+        <label style="color:var(--danger)">Danger zone</label>
+        <button class="btn" style="color:var(--danger);border-color:var(--danger);font-size:12px" onclick="clearAllData()">Clear all saved data</button>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:flex-end">
+      <button class="btn" onclick="closeModal('modal-settings')">Cancel</button>
+      <button class="btn" style="background:var(--info-bg);color:var(--info);border-color:transparent" onclick="saveSettings()">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────
+const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
+const LS_DATA = 'conftracker_data';
+const LS_TAGS = 'conftracker_tags';
+const LS_FILTERTAGS = 'conftracker_filtertags';
+const LS_SCOPE = 'conftracker_scope';
+const LS_APIKEY = 'conftracker_apikey';
+const LS_ALERTDAYS = 'conftracker_alertdays';
+const LS_ALERTDISMISSED = 'conftracker_alertdismissed';
+const STAGES = ['Idea / scoping','Abstract drafted','Poster drafted','Submitted'];
+
+// ─── STATE ───────────────────────────────────────────────────
+let sel = null, view = 'inbox', filt = 'all';
+let searchScope = ls(LS_SCOPE) || 'international';
+let alertDays = parseInt(ls(LS_ALERTDAYS) || '21');
+let discoveredResults = [];
+
+const DEFAULT_TAGS = ['drug screening','high-throughput screening','proteomics','label-free proteomics','multiplexing','advanced microscopy','single-cell analysis','single-cell imaging','drug lead prioritisation','toxicity prediction','computational biology','machine learning biology'];
+const DEFAULT_FILTER_TAGS = ['all','screen','proteomics','imaging','ml','singlecell','tox','drug','omics'];
+const SEED_DATA = [
+  {id:1,name:'SLAS 2025 — Society for Lab Automation & Screening',loc:'San Diego, CA, USA',dist:13400,dates:'Feb 3–7, 2025',ddl:'Oct 15, 2024',dLeft:0,price:'$895',tags:['screen','drug'],status:'new',interest:'none',stage:0,elig:'Open — poster abstract track',url:'https://www.slas.org/slas2025',rel:'high',notes:'Top venue for HTS and drug screening. Strong poster programme.',userNotes:''},
+  {id:2,name:'HUPO 2025 — Human Proteome Organization World Congress',loc:'Barcelona, Spain',dist:16700,dates:'Sep 28–Oct 2, 2025',ddl:'Apr 30, 2025',dLeft:44,price:'€890',tags:['proteomics','omics'],status:'new',interest:'none',stage:0,elig:'Open — poster abstracts welcome',url:'https://www.hupo.org',rel:'high',notes:'Premier proteomics conference. Label-free and multiplexing sessions.',userNotes:''},
+  {id:3,name:'ASMS 2025 — Annual Conference on Mass Spectrometry',loc:'Baltimore, MD, USA',dist:16200,dates:'Jun 1–5, 2025',ddl:'Feb 5, 2025',dLeft:18,price:'$850',tags:['proteomics','omics','screen'],status:'new',interest:'none',stage:0,elig:'Open — poster and oral tracks',url:'https://www.asms.org',rel:'high',notes:'Mass spec focus — highly relevant for label-free proteomics and multiplexing.',userNotes:''},
+  {id:4,name:'ISAC 2025 — Single Cell Analysis Congress',loc:'Rotterdam, Netherlands',dist:16900,dates:'May 20–22, 2025',ddl:'Mar 1, 2025',dLeft:42,price:'€750',tags:['singlecell','imaging'],status:'new',interest:'none',stage:0,elig:'Open — poster submissions encouraged',url:'https://www.isac-net.org',rel:'high',notes:'Directly covers single-cell imaging and analysis workflows.',userNotes:''},
+  {id:5,name:'Focus on Microscopy 2025',loc:'Genova, Italy',dist:16200,dates:'Apr 6–9, 2025',ddl:'Dec 20, 2024',dLeft:0,price:'€680',tags:['imaging'],status:'interested',interest:'yes',stage:1,elig:'Open — posters and demos',url:'https://www.focusonmicroscopy.org',rel:'high',notes:'Premier advanced microscopy venue. Super-res and live-cell imaging.',userNotes:''},
+  {id:6,name:'ELRIG Drug Discovery 2025',loc:'London, UK',dist:16800,dates:'Oct 7–8, 2025',ddl:'Jun 1, 2025',dLeft:106,price:'£595',tags:['drug','screen','tox'],status:'interested',interest:'yes',stage:0,elig:'Open — industry and academia',url:'https://www.elrig.org',rel:'high',notes:'Strong HTS and lead prioritisation track.',userNotes:''},
+  {id:7,name:'ISMB/ECCB 2025 — Intelligent Systems for Molecular Biology',loc:'Liverpool, UK',dist:16900,dates:'Jul 20–24, 2025',ddl:'Feb 13, 2025',dLeft:26,price:'£720',tags:['ml','omics','proteomics'],status:'tracking',interest:'yes',stage:2,elig:'Open — poster track available',url:'https://www.iscb.org/ismbeccb2025',rel:'med',notes:'Good ML-bio intersection. Computational proteomics sessions relevant.',userNotes:''},
+  {id:8,name:'CYTO 2025 — ISAC Cytometry Congress',loc:'Prague, Czech Republic',dist:16400,dates:'Jun 22–26, 2025',ddl:'Feb 28, 2025',dLeft:41,price:'€810',tags:['singlecell','imaging','screen'],status:'new',interest:'none',stage:0,elig:'Open — poster sessions prominent',url:'https://isac-net.org/cyto2025',rel:'high',notes:'Flow and mass cytometry, CyTOF, single-cell multiplexing.',userNotes:''},
+  {id:9,name:'SOT 2025 — Society of Toxicology Annual Meeting',loc:'San Diego, CA, USA',dist:13400,dates:'Mar 16–20, 2025',ddl:'Oct 3, 2024',dLeft:0,price:'$780',tags:['tox','drug'],status:'pass',interest:'no',stage:0,elig:'Open',url:'https://www.toxicology.org',rel:'med',notes:'Missed deadline.',userNotes:''},
+];
+
+// ─── LOCALSTORAGE HELPERS ────────────────────────────────────
+function ls(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
+function lsSet(key, val) { try { localStorage.setItem(key, val); } catch(e) {} }
+function lsJSON(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch(e) { return null; } }
+function lsSetJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+
+// ─── LOAD/SAVE STATE ─────────────────────────────────────────
+let data = lsJSON(LS_DATA) || JSON.parse(JSON.stringify(SEED_DATA));
+let researchTags = lsJSON(LS_TAGS) || [...DEFAULT_TAGS];
+let filterTags = lsJSON(LS_FILTERTAGS) || [...DEFAULT_FILTER_TAGS];
+
+function saveData() { lsSetJSON(LS_DATA, data); }
+function saveTags() { lsSetJSON(LS_TAGS, researchTags); lsSetJSON(LS_FILTERTAGS, filterTags); }
+
+// ─── DEADLINE ALERTS ─────────────────────────────────────────
+function checkAlerts() {
+  const dismissed = ls(LS_ALERTDISMISSED);
+  const today = new Date().toDateString();
+  if (dismissed === today) return;
+
+  const urgent = data.filter(c => c.interest === 'yes' && c.dLeft > 0 && c.dLeft <= alertDays);
+  if (!urgent.length) return;
+
+  const names = urgent.map(c => `${c.name.split('—')[0].trim()} (${c.dLeft}d)`).join(', ');
+  const plural = urgent.length === 1 ? 'deadline' : 'deadlines';
+  document.getElementById('alert-text').innerHTML =
+    `⚠️ <strong>${urgent.length} upcoming ${plural}:</strong> ${names} — check the "Due soon" view.`;
+  document.getElementById('alert-banner').style.display = 'block';
+}
+
+function dismissAlert() {
+  document.getElementById('alert-banner').style.display = 'none';
+  lsSet(LS_ALERTDISMISSED, new Date().toDateString());
+}
+
+// ─── RESEARCH TAGS ───────────────────────────────────────────
+function renderResearchTags() {
+  document.getElementById('research-tags').innerHTML = researchTags.map((t,i) =>
+    `<span class="ptag">${t}<span class="remove" onclick="removeTag(${i})">×</span></span>`
+  ).join('');
+}
+function addTag() {
+  const inp = document.getElementById('new-tag-input');
+  const val = inp.value.trim();
+  if (val && !researchTags.includes(val)) { researchTags.push(val); saveTags(); renderResearchTags(); }
+  inp.value = '';
+}
+function removeTag(i) { researchTags.splice(i,1); saveTags(); renderResearchTags(); }
+
+// ─── SCOPE ───────────────────────────────────────────────────
+function setScope(s) {
+  searchScope = s;
+  lsSet(LS_SCOPE, s);
+  ['local','domestic','international'].forEach(x =>
+    document.getElementById('scope-'+x).classList.toggle('active', x===s)
+  );
+}
+
+// ─── FILTER CHIPS ────────────────────────────────────────────
+function renderFilterBar() {
+  document.getElementById('filter-bar').innerHTML =
+    `<span class="filter-label">Topic</span>` +
+    filterTags.map(f =>
+      `<div class="chip ${filt===f?'on':''}" onclick="tf('${f}')" data-f="${f}">${f==='all'?'All':f}</div>`
+    ).join('');
+}
+function tf(f) { filt=f; renderFilterBar(); render(); }
+
+// ─── DATA HELPERS ────────────────────────────────────────────
+function dpClass(d) { if(d<=0) return 'dp-closed'; if(d<=21) return 'dp-urgent'; if(d<=60) return 'dp-soon'; return 'dp-ok'; }
+function dpText(c) { return c.dLeft<=0 ? 'Closed' : c.ddl+' · '+c.dLeft+'d'; }
+function statusBadge(c) {
+  if(c.interest==='no'||c.status==='pass') return ['sb-pass','Pass'];
+  if(c.status==='tracking') return ['sb-track','Submitting'];
+  if(c.interest==='yes') return ['sb-int','Interested'];
+  return ['sb-new','New'];
+}
+function filtered() {
+  let list = [...data];
+  if(view==='inbox') list=list.filter(c=>c.status==='new');
+  else if(view==='urgent') list=list.filter(c=>c.dLeft>0&&c.dLeft<=alertDays&&c.interest!=='no'&&c.status!=='pass');
+  else if(view==='interested') list=list.filter(c=>c.interest==='yes'&&c.status!=='pass');
+  else if(view==='tracking') list=list.filter(c=>c.status==='tracking');
+  else if(view==='passed') list=list.filter(c=>c.interest==='no'||c.status==='pass');
+  if(filt!=='all') list=list.filter(c=>c.tags.includes(filt));
+  const q=document.getElementById('search').value.toLowerCase();
+  if(q) list=list.filter(c=>c.name.toLowerCase().includes(q)||c.loc.toLowerCase().includes(q)||c.tags.some(t=>t.includes(q)));
+  return list;
+}
+
+// ─── RENDER LIST ─────────────────────────────────────────────
+function render() {
+  const list = filtered();
+  const el = document.getElementById('list');
+  if(!list.length){ el.innerHTML='<div class="empty-state">No conferences found</div>'; return; }
+  el.innerHTML = list.map(c => {
+    const [sc,sl] = statusBadge(c);
+    return `<div class="conf-card ${c.status==='new'?'unread':''} ${sel===c.id?'sel':''}" onclick="pick(${c.id})">
+      <div class="cname">${c.status==='new'?'<span class="unread-dot"></span>':''}${c.name}</div>
+      <div class="cmeta"><span>📍 ${c.loc}</span><span>${c.dist>1000?(c.dist/1000).toFixed(1)+'k km':c.dist+' km'}</span><span>🗓 ${c.dates}</span><span>💰 ${c.price}</span></div>
+      <div class="cfoot">
+        <div class="ctags">${c.tags.map(t=>`<span class="tag tag-${t.replace(/[^a-z]/g,'')||'custom'}">${t}</span>`).join('')}</div>
+        <div style="display:flex;gap:5px;align-items:center">
+          <span class="dpill ${dpClass(c.dLeft)}">${dpText(c)}</span>
+          <span class="sbadge ${sc}">${sl}</span>
+        </div>
+      </div>
+      <div class="rel-row"><span class="rel-dot ${c.rel==='high'?'rel-high':c.rel==='med'?'rel-med':'rel-low'}"></span><span style="font-size:10px;color:var(--text3)">${c.rel==='high'?'High relevance':c.rel==='med'?'Moderate relevance':'Low relevance'}</span></div>
+    </div>`;
+  }).join('');
+  badges();
+}
+
+// ─── DETAIL ──────────────────────────────────────────────────
+function pick(id) {
+  sel=id;
+  const c=data.find(x=>x.id===id);
+  if(c&&c.status==='new'){c.status='seen';saveData();}
+  render(); showDetail(c);
+}
+
+function showDetail(c) {
+  if(!c){document.getElementById('detail').innerHTML='<div class="detail-empty"><span style="font-size:32px">🗂</span>Select a conference to view details</div>';return;}
+  const prog=Math.round((c.stage/(STAGES.length-1))*100);
+  document.getElementById('detail').innerHTML=`
+    <div class="dh">
+      <div class="dh-name">${c.name}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">📍 ${c.loc} · ${c.dist>1000?(c.dist/1000).toFixed(1)+'k km':c.dist+' km'} from Sydney</div>
+      <div class="ctags" style="gap:4px;margin-bottom:6px">${c.tags.map(t=>`<span class="tag tag-${t.replace(/[^a-z]/g,'')||'custom'}">${t}</span>`).join('')}</div>
+      <div class="rel-row"><span class="rel-dot ${c.rel==='high'?'rel-high':c.rel==='med'?'rel-med':'rel-low'}"></span><span style="font-size:11px;color:var(--text3)">${c.rel==='high'?'High relevance':'Moderate relevance'}</span></div>
+    </div>
+    <div class="ds">
+      <div class="ds-label">Details</div>
+      <div class="dr"><span>Dates</span><span>${c.dates}</span></div>
+      <div class="dr"><span>Deadline</span><span class="dpill ${dpClass(c.dLeft)}">${dpText(c)}</span></div>
+      <div class="dr"><span>Registration</span><span>${c.price}</span></div>
+      <div class="dr"><span>Eligibility</span><span style="text-align:right;max-width:200px">${c.elig}</span></div>
+      <div style="margin-top:7px;font-size:12px;color:var(--text2);line-height:1.6">${c.notes}</div>
+      <a class="conf-link" href="${c.url}" target="_blank" rel="noopener">🔗 Visit conference website <span style="font-size:10px;opacity:.6">${c.url.replace('https://','').split('/')[0]}</span></a>
+    </div>
+    <div class="int-row">
+      <button class="ib ${c.interest==='yes'?'yes':''}" onclick="setInt(${c.id},'yes')">✓ Interested</button>
+      <button class="ib ${c.interest==='maybe'?'maybe':''}" onclick="setInt(${c.id},'maybe')">? Maybe</button>
+      <button class="ib ${c.interest==='no'?'no':''}" onclick="setInt(${c.id},'no')">✕ Pass</button>
+    </div>
+    ${c.interest==='yes'?`
+    <div class="ds">
+      <div class="ds-label">Submission tracker — poster</div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${prog}%"></div></div>
+      <div class="stage-row">${STAGES.map((s,i)=>`<button class="stg ${i<c.stage?'done':i===c.stage?'cur':''}" onclick="setStage(${c.id},${i})">${i<c.stage?'✓ ':''}${s}</button>`).join('')}</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text2)">Current: <strong>${STAGES[c.stage]}</strong></div>
+    </div>
+    <div class="ds">
+      <div class="ds-label">Notes</div>
+      <textarea class="notes-area" placeholder="Poster idea, collaborators, key figures…" oninput="saveNotes(${c.id},this.value)">${c.userNotes||''}</textarea>
+    </div>`:''}
+  `;
+}
+
+function setInt(id,val) {
+  const c=data.find(x=>x.id===id);
+  if(!c)return;
+  c.interest=val;
+  c.status=val==='yes'?'interested':val==='no'?'pass':'maybe';
+  saveData(); render(); showDetail(c);
+}
+function setStage(id,s) {
+  const c=data.find(x=>x.id===id);
+  if(!c)return;
+  c.stage=s;
+  if(s>=STAGES.length-1)c.status='tracking';
+  saveData(); showDetail(c); render();
+}
+function saveNotes(id,v) {
+  const c=data.find(x=>x.id===id);
+  if(c){c.userNotes=v;saveData();}
+}
+
+// ─── NAV ─────────────────────────────────────────────────────
+function sw(v) {
+  view=v; sel=null;
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  document.getElementById('nav-'+v)?.classList.add('active');
+  const titles={inbox:'Inbox',urgent:'Due soon',interested:'Interested',tracking:'Submitting',all:'All conferences',passed:'Passed'};
+  document.getElementById('view-title').textContent=titles[v]||v;
+  document.getElementById('detail').innerHTML='<div class="detail-empty"><span style="font-size:32px">🗂</span>Select a conference to view details</div>';
+  render();
+}
+
+function badges() {
+  document.getElementById('b-inbox').textContent=data.filter(c=>c.status==='new').length;
+  document.getElementById('b-urgent').textContent=data.filter(c=>c.dLeft>0&&c.dLeft<=alertDays&&c.interest!=='no'&&c.status!=='pass').length;
+  document.getElementById('b-int').textContent=data.filter(c=>c.interest==='yes').length;
+  document.getElementById('b-track').textContent=data.filter(c=>c.status==='tracking').length;
+}
+
+// ─── MANUAL ADD ──────────────────────────────────────────────
+function toggleAddForm() {
+  const w=document.getElementById('add-form-wrap');
+  w.style.display=w.style.display==='none'?'block':'none';
+}
+function addConfManual() {
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('Please enter a conference name.');return;}
+  const tagsRaw=document.getElementById('f-tags').value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+  tagsRaw.forEach(t=>{if(!filterTags.includes(t))filterTags.push(t);});
+  data.unshift({id:Date.now(),name,loc:document.getElementById('f-loc').value||'Unknown',dist:0,dates:document.getElementById('f-dates').value||'TBC',ddl:document.getElementById('f-ddl').value||'TBC',dLeft:estimateDaysLeft(document.getElementById('f-ddl').value),price:document.getElementById('f-price').value||'TBC',tags:tagsRaw.length?tagsRaw:['custom'],status:'new',interest:'none',stage:0,elig:'Check website',url:document.getElementById('f-url').value||'#',rel:'med',notes:document.getElementById('f-notes').value,userNotes:''});
+  ['f-name','f-loc','f-dates','f-ddl','f-price','f-url','f-tags','f-notes'].forEach(id=>document.getElementById(id).value='');
+  saveTags(); saveData(); toggleAddForm(); renderFilterBar(); render(); badges();
+}
+
+// ─── DISCOVER MODAL ──────────────────────────────────────────
+function openDiscoverModal() {
+  document.getElementById('modal-scope-row').innerHTML=['local','domestic','international'].map(s=>
+    `<button class="scope-opt ${searchScope===s?'sel':''}" onclick="modalSetScope('${s}')" id="mscope-${s}">${s==='local'?'📍 Local (Sydney)':s==='domestic'?'🇦🇺 Australia':'🌐 Global'}</button>`
+  ).join('');
+  document.getElementById('modal-tags-preview').innerHTML=researchTags.map(t=>`<span class="ptag" style="font-size:11px">${t}</span>`).join('');
+  document.getElementById('results-area').style.display='none';
+  document.getElementById('search-status').style.display='block';
+  document.getElementById('search-status').innerHTML='Configure your search above, then click <strong>Search</strong>.';
+  document.getElementById('import-tally').textContent='';
+  discoveredResults=[];
+  document.getElementById('modal-discover').style.display='flex';
+}
+function modalSetScope(s) {
+  searchScope=s; setScope(s);
+  document.querySelectorAll('.scope-opt').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('mscope-'+s).classList.add('sel');
+}
+function closeModal(id) { document.getElementById(id).style.display='none'; }
+
+async function runDiscover() {
+  const extra=document.getElementById('extra-terms').value.trim();
+  const period=document.getElementById('time-period').value.trim()||'2025';
+  const btn=document.getElementById('search-btn');
+  const status=document.getElementById('search-status');
+  const apiKey=ls(LS_APIKEY)||'';
+
+  btn.disabled=true; btn.textContent='Searching…';
+  status.style.display='block';
+  status.innerHTML='<span class="spinner"></span> Searching the web for relevant conferences…';
+  document.getElementById('results-area').style.display='none';
+  discoveredResults=[];
+
+  const scopeStr=searchScope==='local'?'in Sydney, Australia only':searchScope==='domestic'?'in Australia only':'worldwide (any country)';
+
+  const headers={'Content-Type':'application/json'};
+  if(apiKey) headers['x-api-key']=apiKey;
+
+  const prompt=`You are a research conference discovery assistant. Search the web and find upcoming academic and industry conferences for ${period} relevant to a researcher based in Sydney, Australia.
+Research areas: ${researchTags.join(', ')}.
+Submission type: posters and demos.
+Geographic scope: ${scopeStr}.
+${extra?'Extra: '+extra:''}
+Return ONLY a valid JSON array (no markdown, no preamble). Each object must have exactly:
+{"name":"Full name + acronym","location":"City, Country","dates":"e.g. Jun 10–14, 2025","deadline":"e.g. Feb 1, 2025 or TBC","price":"e.g. $850 or TBC","url":"https://...","tags":["tag1","tag2"],"relevance":"high or med or low","notes":"1–2 sentences on relevance"}
+Tags: short lowercase from: screen, proteomics, imaging, singlecell, ml, tox, drug, omics or similar.
+Find 8–10 conferences. Only return the JSON array.`;
+
+  try {
+    const response=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify({model:ANTHROPIC_MODEL,max_tokens:2000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
+    const result=await response.json();
+    if(result.error) throw new Error(result.error.message||'API error');
+    const fullText=result.content.filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    const jsonMatch=fullText.match(/\[[\s\S]*\]/);
+    if(!jsonMatch) throw new Error('Could not parse response. Try searching again.');
+    discoveredResults=JSON.parse(jsonMatch[0]).map((c,i)=>({...c,_id:Date.now()+i,_added:false,_duplicate:isDuplicate(c.name)}));
+    renderResults();
+  } catch(err) {
+    status.innerHTML=`<span style="color:var(--danger)">⚠ ${err.message}${!apiKey?' — add your API key in Settings to use standalone.':''}</span>`;
+  } finally {
+    btn.disabled=false; btn.textContent='Search with AI ↗';
+  }
+}
+
+// ─── DUPLICATE DETECTION ─────────────────────────────────────
+function normalize(name) { return name.toLowerCase().replace(/[^a-z0-9]/g,'').substring(0,30); }
+function isDuplicate(name) {
+  const n=normalize(name);
+  return data.some(c=>normalize(c.name)===n||normalize(c.name).startsWith(n.substring(0,20))||n.startsWith(normalize(c.name).substring(0,20)));
+}
+
+function renderResults() {
+  const status=document.getElementById('search-status');
+  const area=document.getElementById('results-area');
+  if(!discoveredResults.length){status.innerHTML='No conferences found. Try broadening your search.';return;}
+  status.style.display='none';
+  area.style.display='block';
+  const newCount=discoveredResults.filter(c=>!c._duplicate).length;
+  const dupCount=discoveredResults.filter(c=>c._duplicate).length;
+  document.getElementById('result-count').textContent=`${discoveredResults.length} found · ${newCount} new · ${dupCount} already in tracker`;
+  document.getElementById('result-cards').innerHTML=discoveredResults.map((c,i)=>`
+    <div class="result-card ${c._added?'imported':''} ${c._duplicate?'duplicate':''}" id="rcard-${i}">
+      <div class="rc-name">${c.name}</div>
+      <div class="rc-meta">
+        <span>📍 ${c.location}</span><span>🗓 ${c.dates}</span>
+        <span>⏰ ${c.deadline}</span><span>💰 ${c.price}</span>
+      </div>
+      <div class="rc-notes">${c.notes}</div>
+      <div class="rc-footer">
+        <div class="rc-tags">
+          ${(c.tags||[]).map(t=>`<span class="tag tag-${t.replace(/[^a-z]/g,'')||'custom'}">${t}</span>`).join('')}
+          <span class="tag" style="background:${c.relevance==='high'?'var(--success-bg)':c.relevance==='med'?'var(--warn-bg)':'var(--surface2)'};color:${c.relevance==='high'?'var(--success)':c.relevance==='med'?'var(--warn)':'var(--text3)'}">
+            ${c.relevance==='high'?'● high':c.relevance==='med'?'◐ med':'○ low'}
+          </span>
+          ${c._duplicate?'<span class="dup-badge">⚠ already tracked</span>':''}
+        </div>
+        <div class="rc-actions">
+          <a href="${c.url}" target="_blank" rel="noopener" style="font-size:11px;color:var(--info)">🔗</a>
+          ${c._added?'<span class="added-label">✓ Added</span>':c._duplicate?`<button class="add-inbox-btn" style="opacity:.7" onclick="addToInbox(${i})">Add anyway</button>`:`<button class="add-inbox-btn" onclick="addToInbox(${i})">+ Inbox</button>`}
+        </div>
+      </div>
+    </div>`).join('');
+  updateImportTally();
+}
+
+function addToInbox(i) {
+  const c=discoveredResults[i];
+  if(c._added)return;
+  c._added=true;
+  const tagsArr=(c.tags||[]).map(t=>t.toLowerCase().replace(/\s+/g,'-'));
+  tagsArr.forEach(t=>{if(!filterTags.includes(t))filterTags.push(t);});
+  data.unshift({id:Date.now()+Math.random(),name:c.name,loc:c.location||'Unknown',dist:0,dates:c.dates||'TBC',ddl:c.deadline||'TBC',dLeft:estimateDaysLeft(c.deadline),price:c.price||'TBC',tags:tagsArr.length?tagsArr:['custom'],status:'new',interest:'none',stage:0,elig:'Check website',url:c.url||'#',rel:c.relevance||'med',notes:c.notes||'',userNotes:''});
+  saveTags(); saveData(); renderFilterBar(); render(); badges();
+  const card=document.getElementById('rcard-'+i);
+  if(card){
+    card.classList.add('imported');
+    const ab=card.querySelector('.add-inbox-btn');
+    if(ab)ab.outerHTML='<span class="added-label">✓ Added</span>';
+  }
+  updateImportTally();
+}
+function importAll() { discoveredResults.forEach((_,i)=>{if(!discoveredResults[i]._added&&!discoveredResults[i]._duplicate)addToInbox(i);}); }
+function updateImportTally() {
+  const added=discoveredResults.filter(c=>c._added).length;
+  const total=discoveredResults.length;
+  document.getElementById('import-tally').textContent=added>0?`${added} of ${total} added to Inbox`:'';
+  document.getElementById('import-all-btn').style.display=(added===total&&total>0)?'none':'block';
+}
+function estimateDaysLeft(ddlStr) {
+  if(!ddlStr||ddlStr==='TBC')return 90;
+  try{const d=new Date(ddlStr);const diff=Math.round((d-Date.now())/86400000);return diff>0?diff:0;}
+  catch{return 90;}
+}
+
+// ─── EXPORT ──────────────────────────────────────────────────
+function openExportModal() { document.getElementById('modal-export').style.display='flex'; }
+
+function getExportData() {
+  const scope=document.querySelector('input[name="exp-scope"]:checked')?.value||'all';
+  if(scope==='all') return data;
+  if(scope==='interested') return data.filter(c=>c.interest==='yes');
+  if(scope==='tracking') return data.filter(c=>c.status==='tracking');
+  if(scope==='deadlines') return data.filter(c=>c.dLeft>0&&c.dLeft<=90);
+  return data;
+}
+
+function doExport(fmt) {
+  const rows=getExportData();
+  if(fmt==='csv') exportCSV(rows);
+  if(fmt==='ics') exportICS(rows);
+  closeModal('modal-export');
+}
+
+function exportCSV(rows) {
+  const headers=['Name','Location','Dates','Deadline','Days Left','Price','Tags','Status','Interest','Stage','URL','Notes'];
+  const escape=v=>`"${String(v||'').replace(/"/g,'""')}"`;
+  const lines=[headers.join(','),...rows.map(c=>[
+    c.name,c.loc,c.dates,c.ddl,c.dLeft,c.price,c.tags.join(';'),c.status,c.interest,STAGES[c.stage]||'',c.url,c.notes
+  ].map(escape).join(','))];
+  download('conference-tracker.csv','text/csv',lines.join('\r\n'));
+}
+
+function exportICS(rows) {
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const fmtDate=str=>{
+    try{const d=new Date(str);if(isNaN(d))return null;return d.toISOString().replace(/[-:]/g,'').split('T')[0];}
+    catch{return null;}
+  };
+  const events=rows.filter(c=>c.dLeft>0&&c.ddl&&c.ddl!=='TBC').map(c=>{
+    const dt=fmtDate(c.ddl);
+    if(!dt)return '';
+    return [`BEGIN:VEVENT`,`UID:conf-${c.id}@conftracker`,`DTSTAMP:${stamp}`,`DTSTART;VALUE=DATE:${dt}`,`DTEND;VALUE=DATE:${dt}`,`SUMMARY:DEADLINE: ${c.name}`,`DESCRIPTION:${c.notes.replace(/,/g,'\\,')} | ${c.url}`,`URL:${c.url}`,`END:VEVENT`].join('\r\n');
+  }).filter(Boolean);
+  const cal=[`BEGIN:VCALENDAR`,`VERSION:2.0`,`PRODID:-//Conference Tracker//EN`,`CALSCALE:GREGORIAN`,`X-WR-CALNAME:Conference Deadlines`,...events,`END:VCALENDAR`].join('\r\n');
+  download('conference-deadlines.ics','text/calendar',cal);
+}
+
+function download(filename,mime,content) {
+  const blob=new Blob([content],{type:mime});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────
+function openSettingsModal() {
+  const k=ls(LS_APIKEY)||'';
+  document.getElementById('api-key-input').value=k;
+  document.getElementById('alert-days-input').value=String(alertDays);
+  document.getElementById('modal-settings').style.display='flex';
+}
+function toggleKeyVis() {
+  const inp=document.getElementById('api-key-input');
+  const btn=inp.parentElement.querySelector('.key-toggle');
+  if(inp.type==='password'){inp.type='text';btn.textContent='Hide';}
+  else{inp.type='password';btn.textContent='Show';}
+}
+function saveSettings() {
+  const k=document.getElementById('api-key-input').value.trim();
+  if(k)lsSet(LS_APIKEY,k); else localStorage.removeItem(LS_APIKEY);
+  alertDays=parseInt(document.getElementById('alert-days-input').value)||21;
+  lsSet(LS_ALERTDAYS,String(alertDays));
+  closeModal('modal-settings');
+  badges(); render();
+}
+function clearAllData() {
+  if(!confirm('This will delete all your conference data, notes, and settings. Are you sure?'))return;
+  [LS_DATA,LS_TAGS,LS_FILTERTAGS,LS_SCOPE,LS_ALERTDAYS,LS_ALERTDISMISSED].forEach(k=>localStorage.removeItem(k));
+  location.reload();
+}
+
+// ─── INIT ────────────────────────────────────────────────────
+setScope(searchScope);
+renderResearchTags();
+renderFilterBar();
+render();
+badges();
+checkAlerts();
+</script>
+</body>
+</html>
